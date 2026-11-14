@@ -16,7 +16,7 @@ npm.cmd run dev
 
 ## GitHub Actions
 
-`Windows build` 工作流在推送和拉取请求时运行，也可以从 Actions 页面手动触发。它使用 Windows runner 和 Node.js 24 执行测试、类型检查及打包。构建完成后，在该次运行的 Artifacts 下载 `markdown-studio-windows-x64`，解压后即可获得 NSIS 安装程序。
+`Windows build` 工作流仅在 GitHub Release 发布时运行，并构建该 Release 标签指向的提交。它使用 Windows runner 和 Node.js 24 执行测试、类型检查及打包。构建完成后，在该次运行的 Artifacts 下载 `markdown-studio-windows-x64`，解压后即可获得 NSIS 安装程序。
 
 ## 在 WSL 中运行
 
