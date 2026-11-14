@@ -85,6 +85,12 @@ operation('search', (ws, query) => {
 })
 operation('tree', ws => ws.tree())
 operation('read', (ws, file) => ws.read(file))
+operation('copyCode', (_ws, text) => clipboard.writeText(text))
+operation('openExternal', (_ws, address) => {
+  const url = new URL(address)
+  if (!['http:', 'https:', 'mailto:'].includes(url.protocol)) throw new Error('不支持此链接协议')
+  return shell.openExternal(url.href)
+})
 operation('info', (_ws, content) => noteInfo(content))
 operation('updateInfo', (_ws, content, title, tags) => updateInfo(content, title, tags))
 operation('save', (ws, file, content, base, overwrite) => ws.save(file, content, base, overwrite

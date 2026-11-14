@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 const api = {}
-for (const action of ['choose', 'resume', 'session', 'search', 'tree', 'read', 'info', 'updateInfo', 'save', 'create', 'move', 'trash', 'paste']) {
+for (const action of ['choose', 'resume', 'session', 'search', 'tree', 'read', 'copyCode', 'openExternal', 'info', 'updateInfo', 'save', 'create', 'move', 'trash', 'paste']) {
   api[action] = (...args) => ipcRenderer.invoke('workspace:' + action, ...args)
 }
 api.onChanged = listener => {

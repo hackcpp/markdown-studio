@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { basicSetup, EditorView } from 'codemirror'
-import { Compartment, EditorState, StateField, Transaction, type Range } from '@codemirror/state'
+import { Compartment, EditorState, StateEffect, StateField, Transaction, type Range } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import { Decoration, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { redo, undo } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { frontmatterPattern, previewBlocks, PreviewWidget, type PreviewActions } from './markdown-preview'
 
-type Props = {
+type Props = PreviewActions & {
   text: string
   visible: boolean
   live: boolean
@@ -16,11 +17,10 @@ type Props = {
   onEdit(text: string): void
   onSave(): void
   onPaste(): Promise<string>
-  onError(error: unknown): void
 }
 
 function frontmatter(state: EditorState) {
-  const match = /^(?:\uFEFF)?---[ \t]*\n(?:[\s\S]*?\n)?(?:---|\.\.\.)[ \t]*(?:\n|$)/.exec(state.doc.toString())
+  const match = frontmatterPattern.exec(state.doc.toString())
   return match ? Decoration.set([Decoration.replace({ block: true }).range(0, match[0].length)]) : Decoration.none
 }
 
@@ -59,11 +59,38 @@ const liveFormatting = ViewPlugin.fromClass(class {
 }, { decorations: plugin => plugin.decorations })
 const liveExtensions = [hideFrontmatter, liveFormatting]
 
+function richPreview(actions: () => PreviewActions) {
+  const focus = StateEffect.define<boolean>()
+  const field = StateField.define({
+    create(state) {
+      const blocks = previewBlocks(state.doc.toString())
+      return { focused: false, blocks, decorations: decorate(state, blocks, false) }
+    },
+    update(value, transaction) {
+      const effect = transaction.effects.find(item => item.is(focus))
+      if (!effect && !transaction.docChanged && !transaction.selection) return value
+      const focused = effect?.value ?? value.focused
+      const blocks = transaction.docChanged ? previewBlocks(transaction.newDoc.toString()) : value.blocks
+      return { focused, blocks, decorations: decorate(transaction.state, blocks, focused) }
+    },
+    provide: field => EditorView.decorations.from(field, value => value.decorations)
+  })
+  function decorate(state: EditorState, blocks: ReturnType<typeof previewBlocks>, focused: boolean) {
+    return Decoration.set(blocks.flatMap(block => {
+      if (focused && state.selection.ranges.some(range => range.from <= block.to && range.to >= block.from)) return []
+      return [Decoration.replace({ block: true, widget: new PreviewWidget(block, actions) }).range(block.from, block.to)]
+    }))
+  }
+  return [field, EditorView.focusChangeEffect.of((_state, focused) => focus.of(focused))]
+}
+
 export function Editor(props: Props) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView>(null)
   const latest = useRef(props)
   const liveMode = useRef(new Compartment())
+  const rich = useRef<ReturnType<typeof richPreview> | null>(null)
+  rich.current ??= richPreview(() => latest.current)
   latest.current = props
 
   useEffect(() => {
@@ -74,7 +101,7 @@ export function Editor(props: Props) {
         doc: latest.current.text,
         extensions: [
           basicSetup, markdown({ base: markdownLanguage }), EditorView.lineWrapping,
-          liveMode.current.of(latest.current.live ? liveExtensions : []),
+          liveMode.current.of(latest.current.live ? [...liveExtensions, ...rich.current!] : []),
           EditorView.contentAttributes.of({ 'aria-label': 'Markdown 编辑器' }),
           EditorView.updateListener.of(update => {
             if (update.docChanged && update.transactions.some(tr => !tr.annotation(Transaction.remote))) {
@@ -126,7 +153,7 @@ export function Editor(props: Props) {
   }, [props.visible])
 
   useEffect(() => {
-    view.current?.dispatch({ effects: liveMode.current.reconfigure(props.live ? liveExtensions : []) })
+    view.current?.dispatch({ effects: liveMode.current.reconfigure(props.live ? [...liveExtensions, ...rich.current!] : []) })
   }, [props.live])
 
   useEffect(() => {

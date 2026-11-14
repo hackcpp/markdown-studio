@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import Markdown, { defaultUrlTransform, type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Editor } from './Editor'
+import { frontmatterPattern } from './markdown-preview'
 import type { Disk, Draft, Mode, Node, SearchResult, Session, Workspace } from './types'
 import './style.css'
 
@@ -18,7 +19,7 @@ const name = (file: string) => file.split('/').at(-1) ?? ''
 const parent = (file: string) => file.split('/').slice(0, -1).join('/')
 const message = (error: unknown) => error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(error)
 const normalize = (disk: Disk | null) => disk && { ...disk, content: disk.content.replace(/\r\n?/g, '\n') }
-const withoutMetadata = (text: string) => text.replace(/^(?:\uFEFF)?---[ \t]*\n(?:[\s\S]*?\n)?(?:---|\.\.\.)[ \t]*(?:\n|$)/, '')
+const withoutMetadata = (text: string) => text.replace(frontmatterPattern, '')
 
 function displayTitle(tab: Tab) {
   const metadata = tab.text.slice(0, tab.text.length - withoutMetadata(tab.text).length)
@@ -75,24 +76,30 @@ function folders(nodes: Node[]): Node[] {
   return nodes.flatMap(node => node.children ? [node, ...folders(node.children)] : [])
 }
 
-function imageUrl(workspace: Workspace, file: string, url: string) {
-  if (!url || /^[a-z][a-z\d+.-]*:|^\/|^#/i.test(url)) return /^https:/i.test(url) ? defaultUrlTransform(url) : ''
+function relativeTarget(file: string, url: string) {
+  if (!url || /^[a-z][a-z\d+.-]*:|^[\/\\#]/i.test(url)) return null
   try {
     const parts = file.split('/').slice(0, -1)
     for (const encoded of url.split(/[?#]/, 1)[0].split('/')) {
       const part = decodeURIComponent(encoded)
       if (part === '..') {
-        if (!parts.length) return ''
+        if (!parts.length) return null
         parts.pop()
       } else if (part && part !== '.') {
-        if (/[\/\\]/.test(part)) return ''
+        if (/[\/\\:\0]/.test(part)) return null
         parts.push(part)
       }
     }
-    return 'note-image://' + workspace.token + '/' + parts.map(encodeURIComponent).join('/')
+    return parts.join('/')
   } catch {
-    return ''
+    return null
   }
+}
+
+function imageUrl(workspace: Workspace, file: string, url: string) {
+  if (/^https:/i.test(url)) return defaultUrlTransform(url)
+  const target = relativeTarget(file, url)
+  return target ? 'note-image://' + workspace.token + '/' + target.split('/').map(encodeURIComponent).join('/') : ''
 }
 
 function SidebarIcon({ kind }: { kind: 'search' | 'recent' | 'favorite' | 'folder' | 'note' | 'root' }) {
@@ -584,6 +591,35 @@ function App() {
     })
   }
 
+  function openNoteLink(ws: Workspace, file: string, url: string) {
+    void exclusive(async () => {
+      if (/^(https?:|mailto:)/i.test(url)) {
+        await window.notes.openExternal(ws.token, url)
+        return
+      }
+      const hash = url.indexOf('#')
+      const rawAnchor = hash === -1 ? '' : url.slice(hash + 1)
+      const anchor = decodeURIComponent(rawAnchor)
+      const target = url.startsWith('#') ? file : relativeTarget(file, url)
+      if (!target || !/\.md$/i.test(target)) throw new Error('链接必须指向工作区内的 Markdown 文件或网页')
+      let line: number | undefined
+      if (anchor) {
+        const disk = tabsRef.current.find(tab => tab.path === target)
+          ?? await window.notes.read(ws.token, target).then(result => result && { text: result.content })
+        const slug = (heading: string) => heading.trim().toLowerCase().replace(/[^\p{L}\p{N}\p{M}_\s-]/gu, '').replace(/\s+/g, '-')
+        const lines = disk?.text.split('\n') ?? []
+        const index = lines.findIndex(text => {
+          const heading = /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(text)
+          return heading && (heading[1] === anchor || slug(heading[1]) === anchor)
+        })
+        if (index >= 0) line = index + 1
+      }
+      await open(ws, target)
+      selectNote(target)
+      if (line !== undefined) setJump({ line })
+    })
+  }
+
   return <div className={sidebar ? 'shell' : 'shell sidebar-hidden'}>
     <header className="top">
       <button className="icon" aria-label="导航栏" aria-pressed={sidebar} title="导航栏" onClick={() => setSidebar(!sidebar)}>☰</button>
@@ -685,6 +721,9 @@ function App() {
           {tabs.map(tab => <Editor key={tab.id} visible={tab.id === current.id}
             live={mode === 'split'} toolbar={toolbar} jump={tab.id === current.id ? jump : undefined}
             text={tab.text} onEdit={text => patch(tab.id, { text, error: undefined })}
+            imageUrl={url => imageUrl(workspace, tab.path, url)}
+            copyCode={code => window.notes.copyCode(workspace.token, code)}
+            openLink={url => openNoteLink(workspace, tab.path, url)}
             onSave={() => void save(tab.id)}
             onPaste={() => window.notes.paste(workspace.token, tab.path)} onError={report} />)}
           {showOutline && <article ref={preview} className="preview" hidden aria-label="Markdown 预览">

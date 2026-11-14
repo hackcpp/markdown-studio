@@ -22,6 +22,8 @@ declare global {
       search(scope: string, query: string): Promise<SearchResult[]>
       tree(scope: string): Promise<Node[]>
       read(scope: string, path: string): Promise<Disk | null>
+      copyCode(scope: string, text: string): Promise<void>
+      openExternal(scope: string, url: string): Promise<void>
       info(scope: string, content: string): Promise<{ title: string; tags: string[] }>
       updateInfo(scope: string, content: string, title: string, tags: string[]): Promise<string>
       save(scope: string, path: string, content: string, base: string | null, overwrite?: boolean): Promise<Save>
