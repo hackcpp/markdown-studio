@@ -16,7 +16,15 @@ npm.cmd run dev
 
 ## GitHub Actions
 
-`Windows build` 工作流仅在 GitHub Release 发布时运行，并构建该 Release 标签指向的提交。它使用 Windows runner 和 Node.js 24 执行测试、类型检查及打包。构建完成后，在该次运行的 Artifacts 下载 `markdown-studio-windows-x64`，解压后即可获得 NSIS 安装程序。
+`Release build` 工作流仅在 GitHub Release 发布时运行，并构建该 Release 标签指向的提交。各平台使用原生 runner 和 Node.js 24 执行测试、类型检查及打包。构建完成后，在该次运行的 Artifacts 下载对应的安装文件。
+
+| 平台 | 构建产物 |
+| --- | --- |
+| Windows x64 | `markdown-studio-windows-x64`（NSIS 安装程序） |
+| macOS Apple Silicon | `markdown-studio-macos-arm64`（DMG） |
+| macOS Intel | `markdown-studio-macos-x64`（DMG） |
+
+macOS 构建产物未使用 Apple Developer ID 签名及公证。
 
 ## 在 WSL 中运行
 
