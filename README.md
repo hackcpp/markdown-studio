@@ -4,6 +4,12 @@
 
 [下载与发布](https://github.com/hackcpp/markdown-studio/releases) · [构建记录](https://github.com/hackcpp/markdown-studio/actions/workflows/build.yml) · [反馈问题](https://github.com/hackcpp/markdown-studio/issues)
 
+## 产品演示
+
+[![Markdown Studio 演示本地文件树、实时预览、源码切换和中文搜索](docs/media/markdown-studio-demo.gif)](docs/media/markdown-studio-demo.mp4)
+
+[观看完整版（15 秒，MP4）](docs/media/markdown-studio-demo.mp4)
+
 ## 功能
 
 - **写作**：多标签编辑，实时预览与源码一键切换，支持 Markdown 格式工具栏、文档目录和浅色／深色主题。
