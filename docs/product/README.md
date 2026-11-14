@@ -1,6 +1,6 @@
 # Markdown Studio 产品设计
 
-本目录记录产品规格、已确认的交互和待实现的功能。Markdown Studio 面向本地 Markdown 笔记管理，提供 Windows 和 macOS 桌面版本。用户安装和使用说明见[项目 README](../../README.md)。
+本目录记录产品规格、交互和验收条件。Markdown Studio 面向本地 Markdown 笔记管理，提供 Windows 和 macOS 桌面版本。用户安装和使用说明见[项目 README](../../README.md)。
 
 ## 文件导航
 
@@ -16,7 +16,7 @@
 | [技术架构](08-technical-architecture.md) | Electron 进程边界和实现约束 |
 | [发布验收](09-roadmap-and-acceptance.md) | 安装包和回归检查 |
 | [产品决策](10-decisions-and-open-issues.md) | 已确认的交互与下一步范围 |
-| [待实现功能规格](11-feature-follow-up.md) | 草稿与冲突、文件移动与删除、Frontmatter、编辑快捷键、搜索与工作区维护 |
+| [功能验收规格](11-feature-follow-up.md) | 草稿与冲突、文件移动与删除、Frontmatter、编辑快捷键、搜索与工作区维护 |
 | [交互原型](prototype/markdown-studio-prototype.html) | 主窗口布局与核心操作演示 |
 
 在本地浏览器打开原型 HTML。原型使用浏览器存储中的演示数据，桌面文件读写、系统废纸篓、故障恢复和完整 Markdown 渲染以应用为准。

@@ -4,20 +4,62 @@ import { basicSetup, EditorView } from 'codemirror'
 import { Compartment, EditorState, StateEffect, StateField, Transaction, type Range } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import { Decoration, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { redo, undo } from '@codemirror/commands'
+import { indentLess, indentMore, redo, undo } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { frontmatterPattern, previewBlocks, PreviewWidget, type PreviewActions } from './markdown-preview'
+import type { Jump } from './types'
 
 type Props = PreviewActions & {
   text: string
   visible: boolean
   live: boolean
   toolbar: HTMLDivElement | null
-  jump?: { line: number }
+  jump?: Jump
   onEdit(text: string): void
   onSave(): void
   onPaste(): Promise<string>
 }
+
+function wrapSelection(editor: EditorView, before: string, after = '', placeholder = '') {
+  const { from, to } = editor.state.selection.main
+  const text = editor.state.sliceDoc(from, to) || placeholder
+  editor.dispatch({
+    changes: { from, to, insert: before + text + after },
+    selection: { anchor: from + before.length, head: from + before.length + text.length },
+    userEvent: 'input'
+  })
+  editor.focus()
+}
+
+function inList(editor: EditorView) {
+  const { from, to } = editor.state.selection.main
+  const doc = editor.state.doc
+  const end = doc.lineAt(Math.max(from, to - 1)).number
+  const tree = syntaxTree(editor.state)
+  for (let number = doc.lineAt(from).number; number <= end; number++) {
+    const line = doc.line(number)
+    const content = /\S/.exec(line.text)
+    if (!content) return false
+    let node = tree.resolveInner(line.from + content.index + 1, -1)
+    while (node.parent && node.name !== 'ListItem') node = node.parent
+    if (node.name !== 'ListItem' && !/^\s*(?:[-+*]|\d+[.)])\s/.test(line.text)) return false
+  }
+  return true
+}
+
+const searchLine = StateEffect.define<number>()
+const searchHighlight = StateField.define<number>({
+  create: () => 0,
+  update(line, transaction) {
+    if (transaction.docChanged) line = 0
+    for (const effect of transaction.effects) if (effect.is(searchLine)) line = effect.value
+    return line
+  },
+  provide: field => EditorView.decorations.compute([field], state => {
+    const line = state.field(field)
+    return line ? Decoration.set([Decoration.line({ class: 'search-hit' }).range(state.doc.line(line).from)]) : Decoration.none
+  })
+})
 
 function frontmatter(state: EditorState) {
   const match = frontmatterPattern.exec(state.doc.toString())
@@ -103,15 +145,31 @@ export function Editor(props: Props) {
           basicSetup, markdown({ base: markdownLanguage }), EditorView.lineWrapping,
           liveMode.current.of(latest.current.live ? [...liveExtensions, ...rich.current!] : []),
           EditorView.contentAttributes.of({ 'aria-label': 'Markdown 编辑器' }),
+          searchHighlight,
           EditorView.updateListener.of(update => {
             if (update.docChanged && update.transactions.some(tr => !tr.annotation(Transaction.remote))) {
               latest.current.onEdit(update.state.doc.toString())
             }
           }),
           EditorView.domEventHandlers({
-            keydown(event) {
-              if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+            keydown(event, editor) {
+              if (event.isComposing || event.keyCode === 229 || editor.composing || !latest.current.visible ||
+                  !(event.target instanceof HTMLElement) || !editor.contentDOM.contains(event.target)) return false
+              const command = /Mac/i.test(navigator.platform) ? event.metaKey : event.ctrlKey
+              const key = event.key.toLowerCase()
+              if (command && !event.altKey && !event.shiftKey && key === 's') {
                 latest.current.onSave()
+                return true
+              }
+              if (command && !event.altKey && !event.shiftKey && (key === 'b' || key === 'i')) {
+                const mark = key === 'b' ? '**' : '*'
+                wrapSelection(editor, mark, mark, '文字')
+                return true
+              }
+              if (command && !event.altKey && (key === '[' || key === ']') ||
+                  !event.ctrlKey && !event.metaKey && !event.altKey && key === 'tab' && inList(editor)) {
+                if (key === '[' || event.shiftKey) indentLess(editor)
+                else indentMore(editor)
                 return true
               }
               return false
@@ -158,23 +216,24 @@ export function Editor(props: Props) {
 
   useEffect(() => {
     const editor = view.current
-    if (!props.visible || !props.jump || !editor) return
+    if (!editor) return
+    if (!props.visible || !props.jump) {
+      if (editor.state.field(searchHighlight)) editor.dispatch({ effects: searchLine.of(0) })
+      return
+    }
     const line = editor.state.doc.line(Math.min(props.jump.line, editor.state.doc.lines))
-    editor.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'start' }) })
+    const match = props.jump.match
+    const column = match ? Math.max(0, line.text.toLowerCase().indexOf(match)) : 0
+    const anchor = line.from + Math.min(line.length, column)
+    editor.dispatch({ selection: { anchor }, effects: [
+      searchLine.of(match ? line.number : 0), EditorView.scrollIntoView(anchor, { y: 'start' })
+    ] })
     editor.focus()
   }, [props.jump, props.visible])
 
   function wrap(before: string, after = '', placeholder = '') {
     const editor = view.current
-    if (!editor) return
-    const { from, to } = editor.state.selection.main
-    const text = editor.state.sliceDoc(from, to) || placeholder
-    editor.dispatch({
-      changes: { from, to, insert: before + text + after },
-      selection: { anchor: from + before.length, head: from + before.length + text.length },
-      userEvent: 'input'
-    })
-    editor.focus()
+    if (editor) wrapSelection(editor, before, after, placeholder)
   }
 
   function prefix(value: string) {
@@ -205,6 +264,12 @@ export function Editor(props: Props) {
       <button title="链接" onClick={() => wrap('[', '](https://)', '链接')}>↗</button>
       <button title="图片链接" onClick={() => wrap('![', '](./image.png)', '图片描述')}>▧</button>
       <button title="插入表格" onClick={() => wrap('\n| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n')}>▦</button>
+      <button title="减少缩进（Ctrl/⌘+[）" aria-keyshortcuts="Control+[ Meta+[" onClick={() => {
+        if (view.current) { indentLess(view.current); view.current.focus() }
+      }}>⇤</button>
+      <button title="增加缩进（Ctrl/⌘+]）" aria-keyshortcuts="Control+] Meta+]" onClick={() => {
+        if (view.current) { indentMore(view.current); view.current.focus() }
+      }}>⇥</button>
       <button title="撤销" onClick={() => { if (view.current) { undo(view.current); view.current.focus() } }}>↶</button>
       <button title="重做" onClick={() => { if (view.current) { redo(view.current); view.current.focus() } }}>↷</button>
     </div>, props.toolbar)}

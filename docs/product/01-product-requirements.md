@@ -16,4 +16,4 @@ Markdown Studio 是面向个人知识积累的本地 Markdown 桌面笔记应用
 
 ## 已确认的主要行为
 
-[产品决策](10-decisions-and-open-issues.md)记录启动恢复、创建位置和关闭标签的规则。[待实现功能规格](11-feature-follow-up.md)记录后续功能和验收条件。[发布验收](09-roadmap-and-acceptance.md)覆盖现有功能的回归检查。
+[产品决策](10-decisions-and-open-issues.md)记录启动恢复、创建位置和关闭标签的规则。[功能验收规格](11-feature-follow-up.md)记录草稿、文件操作、编辑和维护的具体条件。[发布验收](09-roadmap-and-acceptance.md)覆盖版本发布的回归检查。

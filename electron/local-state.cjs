@@ -24,7 +24,19 @@ class LocalState {
   async recent() { return (await this.read('workspace.json'))?.root }
   remember(root) { return this.write('workspace.json', { root }) }
   load(root) { return this.read(this.key(root)) }
-  save(root, session) { return this.write(this.key(root), session) }
+  async save(root, session) {
+    const previous = new Map((await this.load(root))?.tabs?.map(item => [item.path, item.draft]) ?? [])
+    const now = new Date().toISOString()
+    const tabs = session.tabs.map(item => {
+      if (!item.draft) return item
+      const old = previous.get(item.path)
+      const { text, base, baseline, identity } = item.draft
+      const same = old && old.text === text && old.base === base && old.baseline === baseline && old.identity === identity
+      return { ...item, draft: { ...item.draft, checkedAt: same ? old.checkedAt ?? now : now } }
+    })
+    await this.write(this.key(root), { ...session, tabs })
+    return tabs.flatMap(item => item.draft ? [{ path: item.path, checkedAt: item.draft.checkedAt }] : [])
+  }
 }
 
 module.exports = { LocalState }

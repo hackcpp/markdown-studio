@@ -50,7 +50,7 @@ npm ci
 npm run dev
 ```
 
-Windows PowerShell 中可使用 `npm.cmd` 执行相同命令。首次启动需要下载 Electron 运行时。
+在 Windows 上，直接使用 Windows 版 Node.js 和 Electron 构建、运行和测试。PowerShell 中可用 `npm.cmd` 执行相同命令。首次启动需要下载 Electron 运行时。
 
 | 命令 | 用途 |
 | --- | --- |

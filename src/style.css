@@ -60,6 +60,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .side-scroll > .tree { padding-left: 0; }
 .tree button, .tree-root, .side-nav { display: flex; align-items: center; gap: 8px; }
 .tree-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.attachment-label { margin-left: auto; white-space: nowrap; color: var(--muted); }
 .sidebar-icon { flex: 0 0 20px; width: 20px; height: 20px; }
 .tree button[aria-expanded="true"] .sidebar-icon[data-kind="folder"] { transform: rotate(90deg); }
 .nav.selected, .tree button.selected, .document-bar button[aria-pressed="true"] { background: var(--soft); color: var(--accent); font-weight: 600; }
@@ -104,6 +105,7 @@ main { min-height: 0; min-width: 0; display: flex; flex-direction: column; backg
 }
 .live-editor .cm-gutters { display: none; }
 .live-editor .cm-activeLine { background: transparent; }
+.cm-editor .cm-line.search-hit { background: var(--soft); box-shadow: inset 3px 0 var(--accent); }
 .live-editor .cm-line { padding-inline: 0; }
 .live-h1, .preview h1 { font-size: 30px; font-weight: 700; line-height: 1.35; }
 .live-h2, .preview h2 { font-size: 22px; font-weight: 700; }
@@ -158,6 +160,13 @@ footer button { padding: 2px 6px; }
 .conflict { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
 .error button, .conflict button { padding: 4px 7px; border: 1px solid var(--line); }
 .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 10px; max-height: 32%; overflow: auto; }
+.draft-comparison { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.draft-comparison pre span { display: block; overflow-wrap: anywhere; }
+.changed-line { background: var(--soft); color: var(--accent); }
+.draft-list article { padding: 10px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.draft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.draft-actions button { padding: 5px 8px; }
+.draft-list .draft-comparison { max-height: none; padding-inline: 0; }
 .overlay { position: fixed; inset: 0; z-index: 10; background: #11182755; display: flex; justify-content: center; align-items: flex-start; padding-top: 14vh; }
 .overlay form, .dialog-panel { width: min(550px, calc(100vw - 30px)); background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
 .overlay form { padding: 17px; }
@@ -172,6 +181,7 @@ footer button { padding: 2px 6px; }
 .results button { padding: 10px; text-align: left; overflow-wrap: anywhere; }
 .results p, .results small { color: var(--muted); }
 .results small { display: block; margin-top: 3px; }
+.check-result { padding: 10px; overflow-wrap: anywhere; }
 @media (max-width: 1000px) {
   .panes { padding-block: 24px 56px; }
 }

@@ -36,10 +36,15 @@
 | 保存 | Cmd+S | Ctrl+S | 已支持 |
 | 文档内查找 | Cmd+F | Ctrl+F | 编辑器键位 |
 | 全局搜索 | Cmd+Shift+F | Ctrl+Shift+F | 已支持 |
+| 粗体 | Cmd+B | Ctrl+B | 编辑器内 |
+| 斜体 | Cmd+I | Ctrl+I | 编辑器内 |
+| 新建笔记 | Cmd+N | Ctrl+N | 工作区 |
+| 关闭标签 | Cmd+W | Ctrl+W | 工作区，应用关闭保护 |
+| 减少／增加缩进 | Cmd+[／Cmd+] | Ctrl+[／Ctrl+] | 编辑器内 |
 | 撤销 | Cmd+Z | Ctrl+Z | 编辑器键位 |
 | 重做 | Cmd+Shift+Z | Ctrl+Shift+Z | 编辑器键位 |
 
-粗体、斜体、新建笔记、关闭标签的快捷键与 Tab 缩进见[编辑快捷键与缩进](11-feature-follow-up.md#编辑快捷键与缩进)。
+列表中可用 Tab 和 Shift+Tab 调整层级。普通正文中这两个键移动焦点。见[编辑快捷键与缩进](11-feature-follow-up.md#编辑快捷键与缩进)。
 
 ## 4. 保存状态机
 

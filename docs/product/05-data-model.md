@@ -18,7 +18,7 @@
 
 新建笔记自动写入 `title`、`created`、`modified` 和 `tags`。标题默认取文件名，日期使用 ISO 8601，标签初始为空。成功保存时更新可安全修改的 `modified`，保留 `created`。用户可以通过「文档信息」修改标题和标签。
 
-当前修改文档信息时会重新序列化 YAML，现有字段和正文会保留，排版可能变化。无法解析时在文档信息入口提示。无损局部编辑见[文档信息与 Frontmatter](11-feature-follow-up.md#文档信息与-frontmatter)。
+修改文档信息时按 YAML 节点范围更新目标字段，保留无关字段、排版和正文。无法安全局部修改时提示使用源码编辑。见[文档信息与 Frontmatter](11-feature-follow-up.md#文档信息与-frontmatter)。
 
 ## 索引和保存基线
 

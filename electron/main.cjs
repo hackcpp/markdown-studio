@@ -6,6 +6,7 @@ const { watch } = require('chokidar')
 const { Workspace } = require('./workspace.cjs')
 const { LocalState } = require('./local-state.cjs')
 const { SearchIndex } = require('./search.cjs')
+const { checkWorkspace } = require('./workspace-check.cjs')
 const { newNote, touchNote, noteInfo, updateInfo } = require('./metadata.cjs')
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'note-image', privileges: { standard: true, secure: true } }])
@@ -16,23 +17,25 @@ let token
 let tail = Promise.resolve()
 let index
 const state = () => new LocalState(path.join(app.getPath('userData'), 'sessions'))
+const searchIndex = () => index ??= new SearchIndex(path.join(app.getPath('userData'), 'search.sqlite'))
 
-function handle(channel, task) {
+function handle(channel, task, queued = true) {
   ipcMain.handle('workspace:' + channel, (event, ...args) => {
     if (event.sender !== window?.webContents || event.senderFrame !== event.sender.mainFrame) {
       throw new Error('无效的工作区请求')
     }
+    if (!queued) return task(...args)
     const result = tail.then(() => task(...args))
     tail = result.catch(() => {})
     return result
   })
 }
 
-function operation(channel, task) {
+function operation(channel, task, queued = true) {
   handle(channel, (scope, ...args) => {
     if (!workspace || scope !== token) throw new Error('工作区已切换')
     return task(workspace, ...args)
-  })
+  }, queued)
 }
 
 function signal(scope, error) {
@@ -79,12 +82,17 @@ handle('resume', async () => {
   }
 })
 operation('session', (ws, session) => state().save(ws.root, session))
-operation('search', (ws, query) => {
-  index ??= new SearchIndex(path.join(app.getPath('userData'), 'search.sqlite'))
-  return index.search(ws, query)
-})
+operation('search', (ws, query) => searchIndex().search(ws, query))
+operation('rebuildIndex', ws => searchIndex().rebuild(ws))
+operation('checkWorkspace', async (ws, drafts) => {
+  let indexError
+  try { indexError = searchIndex().error }
+  catch (error) { indexError = error.message }
+  return checkWorkspace(ws, { tabs: drafts.map(file => ({ path: file, draft: true })) }, indexError)
+}, false)
 operation('tree', ws => ws.tree())
 operation('read', (ws, file) => ws.read(file))
+operation('movedNote', (ws, file, identity, hash) => ws.movedNote(file, identity, hash))
 operation('copyCode', (_ws, text) => clipboard.writeText(text))
 operation('openExternal', (_ws, address) => {
   const url = new URL(address)
@@ -93,7 +101,7 @@ operation('openExternal', (_ws, address) => {
 })
 operation('info', (_ws, content) => noteInfo(content))
 operation('updateInfo', (_ws, content, title, tags) => updateInfo(content, title, tags))
-operation('save', (ws, file, content, base, overwrite) => ws.save(file, content, base, overwrite
+operation('save', (ws, file, content, base, overwrite, exact) => ws.save(file, content, base, overwrite
   ? async disk => {
     const directory = path.join(app.getPath('userData'), 'recovery')
     await fs.mkdir(directory, { recursive: true, mode: 0o700 })
@@ -106,11 +114,12 @@ operation('save', (ws, file, content, base, overwrite) => ws.save(file, content,
       await handle.close()
     }
   }
-  : undefined, true, touchNote))
+  : undefined, !exact, touchNote))
 operation('create', (ws, dir, name, folder) => ws.create(dir, name, folder,
   folder ? '' : newNote(name.replace(/\.md$/i, ''))))
-operation('move', (ws, file, dir, name) => ws.move(file, dir, name))
-operation('trash', (ws, file) => ws.trash(file, target => shell.trashItem(target)))
+operation('move', (ws, file, dir, name, blocked) => ws.move(file, dir, name, blocked))
+operation('trashPreview', (ws, file) => ws.trashPreview(file))
+operation('trash', (ws, file, signature) => ws.trash(file, target => shell.trashItem(target), signature))
 operation('paste', (ws, file) => {
   const image = clipboard.readImage()
   if (image.isEmpty()) throw new Error('剪贴板中没有图片')
