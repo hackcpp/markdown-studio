@@ -1,49 +1,59 @@
-# Markdown Studio 0.4.0 MVP
+# Markdown Studio
 
-打开一个本地目录即可浏览、编辑和管理其中的 Markdown 笔记。应用直接读写原目录中的文件。
+**本地优先的 Markdown 桌面笔记应用。** 打开一个文件夹，就能整理、搜索和编辑其中的笔记。正文始终保存在原目录的 `.md` 文件里，也可以用其他编辑器打开。
 
-## 在 Windows 中运行
+[下载与发布](https://github.com/hackcpp/markdown-studio/releases) · [构建记录](https://github.com/hackcpp/markdown-studio/actions/workflows/build.yml) · [反馈问题](https://github.com/hackcpp/markdown-studio/issues)
 
-使用 Windows 版 Node.js 22.12 或更新版本。首次启动需要下载 Electron 运行时。
+## 功能
 
-```powershell
-Set-Location 'D:\Work\vagrant\ubuntu-jammy64\code\markdown'
-npm.cmd ci
-npm.cmd run dev
-```
+- **写作**：多标签编辑，实时预览与源码一键切换，支持 Markdown 格式工具栏、文档目录和浅色／深色主题。
+- **整理**：以文件夹为工作区，在文件树中创建、重命名、移动笔记，或将其移至系统回收站／废纸篓。支持最近打开和收藏。
+- **搜索**：按标题、正文和路径查找笔记，支持中文短词。SQLite 索引可从本地文件重建。
+- **图片与元数据**：粘贴图片后自动保存到 `Attachments/images` 并插入相对链接。可在「文档信息」中编辑 YAML 标题和标签。
+- **保存与恢复**：停笔约 800 毫秒后自动保存。重启可恢复工作区、标签页和编辑模式。异常退出后可恢复草稿，外部修改发生冲突时可以比较两版内容。
 
-`npm.cmd run dist:win` 在 `release` 目录生成 Windows 安装包。
+## 下载
 
-## GitHub Actions
+目前尚未发布正式 Release。可从 [已通过的 Windows 构建](https://github.com/hackcpp/markdown-studio/actions/runs/43571351207) 下载早期 x64 安装包，或按下文从源码运行。
 
-`Release build` 工作流仅在 GitHub Release 发布时运行，并构建该 Release 标签指向的提交。各平台使用原生 runner 和 Node.js 24 执行测试、类型检查及打包。构建完成后，在该次运行的 Artifacts 下载对应的安装文件。
+发布 [GitHub Release](https://github.com/hackcpp/markdown-studio/releases) 后，构建产物会出现在对应 [Actions 运行](https://github.com/hackcpp/markdown-studio/actions/workflows/build.yml) 的 **Artifacts** 区域。按设备选择并解压下载的归档：
 
-| 平台 | 构建产物 |
-| --- | --- |
-| Windows x64 | `markdown-studio-windows-x64`（NSIS 安装程序） |
-| macOS Apple Silicon | `markdown-studio-macos-arm64`（DMG） |
-| macOS Intel | `markdown-studio-macos-x64`（DMG） |
+| 平台 | 构建产物 | 格式 |
+| --- | --- | --- |
+| Windows x64 | `markdown-studio-windows-x64` | NSIS `.exe` |
+| macOS Apple Silicon | `markdown-studio-macos-arm64` | `.dmg` |
+| macOS Intel | `markdown-studio-macos-x64` | `.dmg` |
 
-macOS 构建产物未使用 Apple Developer ID 签名及公证。
+macOS 打包尚待首次 Release 验证，目前未配置 Apple Developer ID 签名或公证。
 
-## 在 WSL 中运行
+## 快速上手
 
-使用 Linux Node.js 22.12 或更新版本，以及可用的 WSLg 图形环境。
+1. 打开应用，点击顶栏的「打开工作区」，选择已有 Markdown 文件夹或一个空文件夹。
+2. 在左侧打开笔记，或点击「新建笔记」。右键单击文件或文件夹可以管理该条目。
+3. 点击编辑工具栏的图标，在实时预览和源码之间切换。使用 `Ctrl+S`（Windows、Linux）或 `⌘S`（macOS）立即保存。
+4. 点击左侧「搜索」，或按 `Ctrl+Shift+F`（macOS 为 `⌘⇧F`）搜索工作区。
+
+如果检测到磁盘文件与草稿冲突，应用会暂停该笔记的自动保存。可比较两版内容并选择如何处理。显式覆盖前，应用会把磁盘版本备份到应用数据目录的 `recovery/`。
+
+## 从源码运行
+
+使用 Node.js 24 和 npm。在 Windows、macOS 或配有图形环境的 Linux 上，进入克隆后的仓库根目录执行：
 
 ```bash
-cd /home/ziyou/work/code/markdown
+git clone https://github.com/hackcpp/markdown-studio.git
+cd markdown-studio
 npm ci
 npm run dev
 ```
 
-`npm test` 运行文件、搜索、元数据和恢复测试。`npm run build` 执行 TypeScript 检查和生产构建。`npm run dist:linux` 生成 Linux 压缩包，解压后运行 `markdown-studio`。`npm run dist:mac` 是 macOS DMG 打包入口。
+Windows PowerShell 中可使用 `npm.cmd` 执行相同命令。首次启动需要下载 Electron 运行时。
 
-## 使用
+| 命令 | 用途 |
+| --- | --- |
+| `npm test` | 运行文件管理、搜索、元数据与恢复测试 |
+| `npm run build` | 执行 TypeScript 检查并构建前端 |
+| `npm run dist:win` | 在 Windows 上生成 NSIS 安装包 |
+| `npm run dist:mac` | 在 macOS 上按当前架构生成 DMG |
+| `npm run dist:linux` | 在 Linux 上生成 `.tar.gz` |
 
-- 在文件树选中笔记或目录，可创建、重命名、移动或移至系统废纸篓。应用发起的移动会同步已打开的标签。外部移动会按旧路径消失、新路径出现处理。
-- 点击工具栏的图标可在实时预览和源码之间切换。停止输入约 800 毫秒后自动保存。也可使用界面上的「保存」按钮，或在编辑器中按 `Ctrl+S` / `⌘S`。
-- 粘贴剪贴板图片时，应用将 PNG 写入工作区的 `Attachments/images`，并在笔记中插入相对链接。通过应用移动笔记时，应用生成的图片链接会更新。将笔记移至废纸篓会保留图片。
-- 有未保存编辑时，磁盘变化会暂停该笔记的自动保存。可以并排比较两版正文，将需要的内容合并到编辑器，再显式保存。覆盖前，磁盘版本写入应用数据目录下的 `recovery/`。
-- 左侧搜索支持路径、标题和正文，包含中文短词。SQLite 索引保存在应用数据目录，可以从 Markdown 文件重新生成。
-- 新建笔记会写入 YAML 文档信息。「文档信息」用于编辑标题和标签。保存已有 YAML 的笔记会更新时间，原有笔记可继续直接编辑正文。
-- 重启会恢复上次工作区、打开的标签和编辑模式。编辑期间每次检查点调度延迟约半秒。异常退出后可以查看或恢复草稿。磁盘版本发生变化时，恢复草稿会进入冲突处理。
+安装包输出到 `release/`。[Release build 工作流](.github/workflows/build.yml) 仅在 GitHub Release 发布时运行，使用 Release 标签指向的提交执行测试和打包。
