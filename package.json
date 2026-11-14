@@ -1,0 +1,51 @@
+{
+  "name": "markdown-studio",
+  "version": "0.4.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite build && electron .",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --test",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:linux": "npm run build && electron-builder --linux tar.gz"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "mdast-util-from-markdown": "^2.0.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@codemirror/lang-markdown": "^6.3.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "codemirror": "^6.0.2",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.0.0"
+  },
+  "build": {
+    "appId": "app.markdownstudio.desktop",
+    "productName": "Markdown Studio",
+    "win": {
+      "icon": "electron/markdown-studio.ico"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    }
+  }
+}
