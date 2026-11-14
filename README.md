@@ -62,6 +62,12 @@ npm run dev
 
 安装包输出到 `release/`。[Release build 工作流](.github/workflows/build.yml) 仅在 GitHub Release 发布时运行，使用 Release 标签指向的提交执行测试和打包。
 
+### 推送前检查
+
+克隆仓库后，在仓库根目录执行一次 `git config --local core.hooksPath .githooks` 启用 hook。推送时会检查待推送提交中的行尾空白、文件尾多余空行和 Tab 缩进，然后在当前工作区运行 `npm test`。任一步失败，Git 都会停止推送。测试其他分支前，先切换到对应分支。
+
+推送到 `main` 后，[Main checks 工作流](.github/workflows/main-checks.yml) 会在 Windows 上用同一套规则检查提交格式，并运行 `npm test`。
+
 ## 产品设计
 
 产品规格、已确认的交互与后续功能验收见[设计文档](docs/product/README.md)。

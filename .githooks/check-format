@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+commit=$(git rev-parse --verify "${1:-HEAD}^{commit}")
+empty_tree=$(git hash-object -w -t tree --stdin </dev/null)
+
+git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,tab-in-indent,cr-at-eol \
+  diff-tree -r --check "$empty_tree" "$commit" --
