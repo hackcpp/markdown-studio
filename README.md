@@ -61,3 +61,7 @@ Windows PowerShell 中可使用 `npm.cmd` 执行相同命令。首次启动需�
 | `npm run dist:linux` | 在 Linux 上生成 `.tar.gz` |
 
 安装包输出到 `release/`。[Release build 工作流](.github/workflows/build.yml) 仅在 GitHub Release 发布时运行，使用 Release 标签指向的提交执行测试和打包。
+
+## 产品设计
+
+产品规格、已确认的交互与后续功能验收见[设计文档](docs/product/README.md)。

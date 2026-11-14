@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown Studio 交互原型</title>
+  <link rel="stylesheet" href="../../../src/style.css">
+  <style>
+    #prototype-editor { min-height: 14rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; font: var(--document-font-size)/1.85 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #prototype-editor[data-source="true"] { font: var(--source-font-size)/1.8 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+    #prototype-editor :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
+    .demo-notice { margin-left: auto; }
+    .demo-dialog { width: min(550px, 90vw); max-height: 85vh; padding: 20px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--paper); }
+    .demo-dialog::backdrop { background: #11182755; }
+    .demo-dialog h2 { margin: 0 0 14px; font-size: 18px; }
+    .demo-dialog input, .demo-dialog select, .demo-dialog textarea { width: 100%; padding: 9px; margin: 4px 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); }
+    .demo-dialog menu { display: flex; justify-content: flex-end; gap: 10px; list-style: none; margin: 12px 0 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div class="shell" id="shell">
+    <header class="top">
+      <button type="button" class="icon" id="sidebar-toggle" title="导航栏" aria-label="导航栏" aria-pressed="true">☰</button>
+      <strong class="brand"><span class="logo" aria-hidden="true">M</span>Markdown Studio</strong>
+      <button type="button" class="workspace-switch" id="workspace-switch" title="切换工作区"></button>
+      <div class="spacer"></div>
+      <button type="button" class="icon" id="theme" title="切换主题" aria-label="切换主题" aria-pressed="false">◐</button>
+      <button type="button" class="icon" id="settings" title="设置" aria-label="设置">⚙</button>
+      <button type="button" class="primary" id="new-note">＋ 新建笔记</button>
+    </header>
+    <aside class="sidebar" id="sidebar" aria-label="工作区">
+      <div class="side-scroll">
+        <button type="button" class="nav side-nav" data-panel="search" data-icon="search">搜索</button>
+        <button type="button" class="nav side-nav" data-panel="recent" data-icon="recent">最近</button>
+        <button type="button" class="nav side-nav" data-panel="favorites" data-icon="favorite">收藏</button>
+        <div class="section-name">我的笔记<button type="button" id="new-folder" title="新建文件夹" aria-label="新建文件夹">＋</button></div>
+        <button type="button" class="nav tree-root" id="workspace" data-icon="root"><span class="tree-label"></span></button>
+        <ul class="tree" id="tree"></ul>
+      </div>
+      <div class="side-foot">●　演示工作区</div>
+    </aside>
+    <main>
+      <nav class="tabs" id="tabs" aria-label="打开的笔记"></nav>
+      <div class="error" id="message" role="alert" hidden><span id="message-text"></span><button type="button" id="message-close">关闭</button></div>
+      <div class="document-bar" id="toolbar">
+        <div class="format" id="format"></div>
+        <div class="spacer"></div>
+        <button type="button" class="mode-toggle" id="mode" aria-label="查看源码" aria-pressed="false" title="切换到源码"></button>
+        <button type="button" id="outline-toggle" aria-label="文档目录" aria-pressed="false" title="文档目录">☷</button>
+        <button type="button" id="note-info" aria-label="文档信息" title="文档信息">ⓘ</button>
+      </div>
+      <div class="work" id="document">
+        <div class="panes">
+          <div class="document-heading">
+            <div class="document-path" id="path"></div>
+            <div class="document-title"><span id="title"></span><button type="button" class="icon" id="favorite" aria-label="收藏当前笔记">☆</button></div>
+          </div>
+          <div class="editor" id="prototype-editor" contenteditable="plaintext-only" role="textbox" aria-multiline="true" aria-label="Markdown 演示编辑器"></div>
+        </div>
+        <aside class="outline-panel" id="outline" hidden>
+          <div class="outline-title"><strong>文档目录</strong><button type="button" id="outline-close" aria-label="关闭文档目录">×</button></div>
+          <nav class="outline" id="headings" aria-label="文档目录"></nav>
+          <div class="outline-title"><strong>文档信息</strong></div>
+          <div class="stat"><span>字数</span><span id="outline-words"></span></div>
+          <div class="stat"><span>字符</span><span id="outline-counts"></span></div>
+          <div class="stat"><span>保存状态</span><span id="outline-status"></span></div>
+        </aside>
+      </div>
+      <div class="empty" id="empty" hidden>
+        <h1>打开一篇笔记</h1>
+        <button type="button" id="empty-new">新建笔记</button>
+      </div>
+      <footer id="footer">
+        <span id="status" role="status"></span>
+        <span id="words"></span>
+        <span id="counts"></span>
+        <span class="demo-notice">演示数据</span>
+        <span>Markdown</span><span>UTF-8</span>
+        <button type="button" id="save">保存</button>
+      </footer>
+    </main>
+  </div>
+  <div class="item-menu" id="item-menu" role="menu" aria-label="文件操作" hidden></div>
+  <dialog class="demo-dialog" id="create" aria-labelledby="create-title">
+    <form id="create-form">
+      <h2 id="create-title">新建笔记</h2>
+      <label id="name-label">名称<input id="name" maxlength="100"></label>
+      <label id="destination-label">保存位置<select id="destination"></select></label>
+      <p id="action-detail" hidden></p>
+      <div id="create-error" role="alert"></div>
+      <menu>
+        <button type="button" data-dismiss>取消</button>
+        <button type="submit" class="primary" id="create-submit">创建并打开</button>
+      </menu>
+    </form>
+  </dialog>
+  <dialog class="demo-dialog" id="info" aria-labelledby="info-title">
+    <form id="info-form">
+      <h2 id="info-title">文档信息</h2>
+      <label>标题<input id="note-title"></label>
+      <label>标签，每行一个<textarea rows="4" id="note-tags"></textarea></label>
+      <menu>
+        <button type="button" data-dismiss>取消</button>
+        <button type="submit" class="primary">应用</button>
+      </menu>
+    </form>
+  </dialog>
+  <dialog class="demo-dialog" id="panel" aria-labelledby="panel-title">
+    <h2 id="panel-title"></h2>
+    <input type="search" id="query" aria-label="搜索笔记" placeholder="搜索标题或正文…">
+    <div class="results" id="results"></div>
+    <menu><button type="button" data-dismiss>关闭</button></menu>
+  </dialog>
+  <script>
+    const byId = id => document.getElementById(id)
+    const editor = byId('prototype-editor')
+    const workspaceName = '个人知识库'
+    const starter = {
+      directories: ['工作', '灵感', 'Inbox'],
+      notes: {
+        '周计划.md': { title: '周计划', saved: '# 本周目标\n\n整理反馈，准备下一次发布。\n\n## 写作计划\n\n- 汇总本周进展\n- 更新发布清单' },
+        '工作/发布清单.md': { title: '发布清单', saved: '# 发布清单\n\n## 准备\n\n检查安装包并更新使用说明。' },
+        '灵感/随手记.md': { title: '随手记', saved: '# 随手记\n\n把想法写下来。' }
+      },
+      tabs: ['周计划.md', '工作/发布清单.md'],
+      active: '周计划.md',
+      recent: ['周计划.md', '工作/发布清单.md'],
+      favorites: [],
+      source: false,
+      dark: false
+    }
+    const key = 'markdown-studio-prototype-v2'
+    const readSession = () => {
+      try { return JSON.parse(localStorage.getItem(key)) ?? structuredClone(starter) }
+      catch { return structuredClone(starter) }
+    }
+    const session = readSession()
+    session.directories ??= [...starter.directories]
+    session.tabs = session.tabs.filter(path => session.notes[path])
+    if (!session.tabs.includes(session.active)) session.active = session.tabs.at(-1) ?? ''
+    const current = () => session.notes[session.active]
+    const noteTitle = (note, path) => note.title || baseName(path).replace(/\.md$/i, '')
+    const body = note => note?.draft ?? note?.saved ?? ''
+    const folderOf = path => path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+    const baseName = path => path.slice(path.lastIndexOf('/') + 1)
+    const joinPath = (folder, name) => folder ? folder + '/' + name : name
+    const timers = new Map()
+    const expanded = new Set()
+    let selected = session.active
+    let selectingFolder = false
+    let searchPanel = 'search'
+    let editing = false
+    let fileAction
+    let menuTrigger
+    const itemMenu = byId('item-menu')
+    const paths = {
+      search: 'M13 13l4 4 M15 9.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Z',
+      recent: 'M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z M10 6.5V10l2.5 1.5',
+      favorite: 'm10 3 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7Z',
+      folder: 'm7.5 5 5 5-5 5',
+      note: 'M5 3h7l3 3v11H5Z M12 3v4h3 M8 10h4 M8 13h4',
+      root: 'M3 15.5v-11h5l2 2h7v9Z',
+      source: 'm6 6-4 4 4 4 M14 6l4 4-4 4 M12 4l-4 12',
+      preview: 'M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5Z M12 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z'
+    }
+    function icon(kind) {
+      const namespace = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(namespace, 'svg')
+      const path = document.createElementNS(namespace, 'path')
+      for (const [attribute, value] of Object.entries({
+        class: 'sidebar-icon', 'data-kind': kind, viewBox: '0 0 20 20', fill: 'none',
+        stroke: 'currentColor', 'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true'
+      })) svg.setAttribute(attribute, value)
+      path.setAttribute('d', paths[kind])
+      svg.append(path)
+      return svg
+    }
+    const persist = () => { try { localStorage.setItem(key, JSON.stringify(session)) } catch {} }
+    const button = (label, run, className = '') => {
+      const element = document.createElement('button')
+      element.type = 'button'
+      element.textContent = label
+      element.className = className
+      element.addEventListener('click', run)
+      return element
+    }
+    function announce(text = '') {
+      byId('message-text').textContent = text
+      byId('message').hidden = text === ''
+    }
+    function expandParents(path) {
+      for (let folder = folderOf(path); folder; folder = folderOf(folder)) expanded.add(folder)
+    }
+    function open(path) {
+      if (!session.tabs.includes(path)) session.tabs.push(path)
+      session.active = selected = path
+      selectingFolder = false
+      expandParents(path)
+      session.recent = [path, ...session.recent.filter(item => item !== path)]
+      announce()
+      render()
+      document.querySelector('.panes').scrollTop = 0
+    }
+    function close(path) {
+      if (session.notes[path].draft !== undefined) {
+        announce('关闭前请保存笔记或处理冲突')
+        return
+      }
+      session.tabs = session.tabs.filter(item => item !== path)
+      if (session.active === path) {
+        session.active = selected = session.tabs.at(-1) ?? ''
+        selectingFolder = false
+      }
+      announce()
+      render()
+    }
+    function renderTree() {
+      const tree = byId('tree')
+      tree.replaceChildren()
+      byId('workspace').classList.toggle('selected', selected === '')
+      const populate = (folder, list) => {
+        for (const path of session.directories.filter(path => folderOf(path) === folder)) {
+          const item = document.createElement('li')
+          const row = treeButton('folder', baseName(path), () => {
+            selected = path
+            selectingFolder = true
+            if (expanded.has(path)) expanded.delete(path)
+            else expanded.add(path)
+            renderTree()
+          }, selectingFolder && selected === path)
+          row.title = path
+          row.setAttribute('aria-expanded', expanded.has(path))
+          row.addEventListener('contextmenu', event => openItemMenu(event, path))
+          item.append(row)
+          if (expanded.has(path)) {
+            const children = document.createElement('ul')
+            children.className = 'tree'
+            populate(path, children)
+            item.append(children)
+          }
+          list.append(item)
+        }
+        for (const [path, note] of Object.entries(session.notes)) {
+          if (folderOf(path) !== folder) continue
+          const item = document.createElement('li')
+          const row = treeButton('note', baseName(path).replace(/\.md$/i, ''), () => open(path), path === selected && !selectingFolder)
+          row.title = path
+          row.addEventListener('contextmenu', event => openItemMenu(event, path))
+          item.append(row)
+          list.append(item)
+        }
+      }
+      populate('', tree)
+    }
+    function treeButton(kind, name, run, selected) {
+      const row = button('', run, selected ? 'selected' : '')
+      const label = document.createElement('span')
+      label.className = 'tree-label'
+      label.textContent = name
+      row.append(icon(kind), label)
+      return row
+    }
+    function renderTabs() {
+      byId('tabs').replaceChildren(...session.tabs.map(path => {
+        const tab = document.createElement('div')
+        tab.className = path === session.active ? 'tab active' : 'tab'
+        const note = session.notes[path]
+        const name = treeButton('note', noteTitle(note, path), () => open(path), false)
+        if (path === session.active) name.setAttribute('aria-current', 'page')
+        if (note.draft !== undefined) {
+          const mark = document.createElement('span')
+          mark.className = 'tab-mark'
+          mark.textContent = '●'
+          name.append(mark)
+        }
+        name.title = path
+        const exit = button('×', () => close(path), 'tab-close')
+        exit.setAttribute('aria-label', '关闭 ' + baseName(path).replace(/\.md$/i, ''))
+        tab.append(name, exit)
+        return tab
+      }))
+    }
+    function renderOutline() {
+      const rows = body(current()).split('\n').flatMap((line, index) => {
+        const match = /^(#{1,6})\s+(.+)/.exec(line)
+        return match ? [{ label: match[2], depth: match[1].length, index }] : []
+      })
+      byId('headings').replaceChildren(...rows.map(row => {
+        const item = button(row.label, () => {
+          editor.querySelector('[data-line="' + row.index + '"]')?.scrollIntoView({ block: 'start' })
+          if (innerWidth <= 800) showOutline(false)
+        })
+        item.style.paddingLeft = 8 + (row.depth - 1) * 10 + 'px'
+        return item
+      }))
+      if (!rows.length) byId('headings').textContent = '当前笔记没有标题'
+    }
+    function renderEditor() {
+      editor.dataset.source = String(session.source)
+      editor.replaceChildren(...body(current()).split('\n').map((line, index) => {
+        const heading = !session.source && /^(#{1,6})\s+(.*)$/.exec(line)
+        const row = document.createElement(heading ? 'h' + heading[1].length : 'div')
+        if (heading) row.className = 'live-h' + heading[1].length
+        row.dataset.line = index
+        row.dataset.mark = heading ? heading[1] + ' ' : ''
+        row.textContent = heading ? heading[2] : line
+        if (!row.textContent) row.append(document.createElement('br'))
+        return row
+      }))
+    }
+    function editorText() {
+      return Array.from(editor.childNodes).map(node => node.nodeType === Node.TEXT_NODE ? node.textContent :
+        (node.dataset?.mark ?? '') + (node.innerText === '\n' ? '' : (node.innerText ?? node.textContent))).join('\n')
+    }
+    function renderStatus() {
+      const note = current()
+      const pending = note?.draft !== undefined
+      byId('status').textContent = !note ? '' : pending ? '未保存' : '✓ 已保存'
+      byId('words').textContent = note ? (body(note).match(/\p{Script=Han}|[A-Za-z0-9_]+/gu)?.length ?? 0) + ' 字' : ''
+      byId('counts').textContent = note ? [...body(note).replace(/\s/g, '')].length + ' 字符' : ''
+      for (const id of ['words', 'counts', 'status']) byId('outline-' + id).textContent = byId(id).textContent
+      byId('save').disabled = !pending
+    }
+    function render() {
+      renderTree()
+      renderTabs()
+      const note = current()
+      byId('document').hidden = byId('toolbar').hidden = byId('footer').hidden = !note
+      byId('empty').hidden = !!note
+      byId('title').textContent = note ? noteTitle(note, session.active) : ''
+      byId('path').textContent = (folderOf(session.active).split('/').join(' / ') || workspaceName) + '　·　本地笔记'
+      const favorite = session.favorites.includes(session.active)
+      byId('favorite').textContent = favorite ? '★' : '☆'
+      byId('favorite').setAttribute('aria-pressed', favorite)
+      byId('mode').replaceChildren(icon(session.source ? 'preview' : 'source'))
+      byId('mode').title = session.source ? '切换到预览' : '切换到源码'
+      byId('mode').setAttribute('aria-pressed', session.source)
+      if (!editing) renderEditor()
+      renderOutline()
+      renderStatus()
+      persist()
+    }
+    function save(path) {
+      const note = session.notes[path]
+      if (note?.draft === undefined) return
+      note.saved = note.draft
+      delete note.draft
+      renderTabs()
+      renderStatus()
+      persist()
+    }
+    editor.addEventListener('input', () => {
+      if (!current()) return
+      const path = session.active
+      current().draft = editorText()
+      clearTimeout(timers.get(path))
+      timers.set(path, setTimeout(() => { timers.delete(path); save(path) }, 800))
+      renderTabs()
+      renderStatus()
+      renderOutline()
+      persist()
+    })
+    editor.addEventListener('focus', () => { editing = true })
+    editor.addEventListener('blur', () => { editing = false; renderEditor() })
+    byId('mode').addEventListener('click', () => { editor.blur(); session.source = !session.source; render() })
+    byId('message-close').addEventListener('click', () => announce())
+    function showOutline(open) {
+      byId('outline').hidden = !open
+      byId('outline-toggle').setAttribute('aria-pressed', open)
+    }
+    byId('outline-toggle').addEventListener('click', () => showOutline(byId('outline').hidden))
+    byId('outline-close').addEventListener('click', () => showOutline(false))
+    byId('note-info').addEventListener('click', () => {
+      byId('note-title').value = current().title
+      byId('note-tags').value = current().tags ?? ''
+      byId('info').showModal()
+    })
+    byId('info-form').addEventListener('submit', event => {
+      event.preventDefault()
+      current().title = byId('note-title').value.trim()
+      current().tags = byId('note-tags').value.trim()
+      byId('info').close()
+      render()
+    })
+    byId('sidebar-toggle').addEventListener('click', event => {
+      byId('sidebar').hidden = !byId('sidebar').hidden
+      byId('shell').classList.toggle('sidebar-hidden', byId('sidebar').hidden)
+      event.currentTarget.setAttribute('aria-pressed', !byId('sidebar').hidden)
+    })
+    function applyTheme() {
+      document.documentElement.dataset.theme = session.dark ? 'dark' : 'light'
+      byId('theme').setAttribute('aria-pressed', session.dark)
+    }
+    byId('theme').addEventListener('click', () => { session.dark = !session.dark; applyTheme(); persist() })
+    byId('workspace').addEventListener('click', () => { selected = ''; selectingFolder = true; renderTree() })
+    byId('favorite').addEventListener('click', () => {
+      const path = session.active
+      session.favorites = session.favorites.includes(path) ? session.favorites.filter(item => item !== path) : [...session.favorites, path]
+      render()
+    })
+    byId('save').addEventListener('click', () => save(session.active))
+    const actions = {
+      note: ['新建笔记', '创建并打开'],
+      folder: ['新建文件夹', '创建'],
+      rename: ['重命名', '重命名'],
+      move: ['移动', '移动'],
+      trash: ['移至废纸篓', '移至废纸篓']
+    }
+    const inBranch = (path, root) => path === root || path.startsWith(root + '/')
+    function closeItemMenu(restoreFocus = false) {
+      itemMenu.hidden = true
+      if (restoreFocus) menuTrigger?.focus()
+    }
+    function openItemMenu(event, path) {
+      event.preventDefault()
+      menuTrigger = event.currentTarget
+      itemMenu.replaceChildren(...['rename', 'move', 'trash'].map(action => {
+        const entry = button(actions[action][0], () => {
+          closeItemMenu()
+          startCreate(action, path)
+        })
+        entry.setAttribute('role', 'menuitem')
+        return entry
+      }))
+      itemMenu.hidden = false
+      const anchor = menuTrigger.getBoundingClientRect()
+      itemMenu.style.left = Math.min(event.clientX || anchor.left, innerWidth - itemMenu.offsetWidth) + 'px'
+      itemMenu.style.top = Math.min(event.clientY || anchor.bottom, innerHeight - itemMenu.offsetHeight) + 'px'
+      itemMenu.firstElementChild.focus()
+    }
+    document.addEventListener('pointerdown', event => {
+      if (!itemMenu.contains(event.target)) closeItemMenu()
+    })
+    itemMenu.addEventListener('keydown', event => {
+      if (event.key === 'Escape' || event.key === 'Tab') {
+        event.preventDefault()
+        closeItemMenu(true)
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const entries = [...itemMenu.children]
+        const step = event.key === 'ArrowDown' ? 1 : -1
+        entries[(entries.indexOf(document.activeElement) + step + entries.length) % entries.length].focus()
+      }
+    })
+    function startCreate(action, path = '') {
+      fileAction = { action, path }
+      const isNew = action === 'note' || action === 'folder'
+      const showName = isNew || action === 'rename'
+      const showDestination = isNew || action === 'move'
+      byId('create-title').textContent = actions[action][0]
+      byId('create-submit').textContent = actions[action][1]
+      byId('create-error').textContent = ''
+      byId('name-label').hidden = !showName
+      byId('name').required = showName
+      byId('name').value = action === 'rename' ? baseName(path).replace(/\.md$/i, '') : ''
+      byId('destination-label').hidden = !showDestination
+      const choices = ['', ...session.directories].filter(folder => action !== 'move' || !inBranch(folder, path))
+      byId('destination').replaceChildren(...choices.map(folder => new Option(folder || '根目录', folder)))
+      byId('destination').value = isNew ? (selectingFolder ? selected : folderOf(selected)) : folderOf(path)
+      byId('action-detail').hidden = isNew
+      byId('action-detail').textContent = action === 'trash' ? '从演示工作区移除「' + path + '」？' : path
+      byId('create').showModal()
+      if (showName) byId('name').focus()
+    }
+    byId('new-note').addEventListener('click', () => startCreate('note'))
+    byId('empty-new').addEventListener('click', () => startCreate('note'))
+    byId('new-folder').addEventListener('click', () => startCreate('folder'))
+    function updatePaths(path, target) {
+      const updated = value => inBranch(value, path) ? (target ? target + value.slice(path.length) : '') : value
+      for (const [file, note] of Object.entries(session.notes)) {
+        if (!inBranch(file, path)) continue
+        if (target) session.notes[updated(file)] = note
+        delete session.notes[file]
+      }
+      session.directories = session.directories.map(updated).filter(Boolean)
+      for (const field of ['tabs', 'recent', 'favorites']) session[field] = session[field].map(updated).filter(Boolean)
+      session.active = updated(session.active) || session.tabs.at(-1) || ''
+      if (inBranch(selected, path)) {
+        selected = target || session.active
+        selectingFolder = !!target && session.directories.includes(target)
+      }
+      if (target) expandParents(target)
+    }
+    byId('create-form').addEventListener('submit', event => {
+      event.preventDefault()
+      const { action, path } = fileAction
+      const isNote = action === 'note' || !!session.notes[path]
+      const rawName = byId('name').value.trim()
+      const name = isNote ? rawName.replace(/\.md$/i, '') : rawName
+      const folder = byId('destination').value
+      const target = action === 'trash' ? '' : action === 'move' ? joinPath(folder, baseName(path))
+        : joinPath(action === 'rename' ? folderOf(path) : folder, name + (isNote ? '.md' : ''))
+      const validatesName = ['note', 'folder', 'rename'].includes(action)
+      if (validatesName && (!name || /[\\/:*?"<>|]/.test(name) || name === '.' || name === '..') ||
+          target && target !== path && (session.notes[target] || session.directories.includes(target))) {
+        byId('create-error').textContent = '请检查名称和位置是否有效，或是否已存在同名条目。'
+        return
+      }
+      if (path && Object.entries(session.notes).some(([file, note]) => inBranch(file, path) && note.draft !== undefined)) {
+        byId('create-error').textContent = '请先保存相关笔记。'
+        return
+      }
+      byId('create').close()
+      if (action === 'note') {
+        session.notes[target] = { title: name, saved: '' }
+        open(target)
+        return
+      }
+      if (action === 'folder') {
+        session.directories.push(target)
+        selected = target
+        selectingFolder = true
+        expandParents(target)
+      } else if (target !== path) {
+        updatePaths(path, target)
+        if (action === 'rename' && isNote && session.notes[target].title === baseName(path).replace(/\.md$/i, '')) {
+          session.notes[target].title = name
+        }
+      }
+      render()
+    })
+    function listPanel() {
+      const needle = byId('query').value.trim().toLowerCase()
+      const matches = searchPanel === 'search' ? (needle ? Object.keys(session.notes).filter(path =>
+        [path, session.notes[path].title, body(session.notes[path])].some(value => value.toLowerCase().includes(needle))) : [])
+        : session[searchPanel] ?? []
+      byId('results').replaceChildren(...matches.map(path => button(noteTitle(session.notes[path], path) + ' · ' + path, () => {
+        byId('panel').close()
+        open(path)
+      })))
+      if (!matches.length && (needle || searchPanel !== 'search')) byId('results').textContent = '暂无记录'
+    }
+    function openPanel(kind) {
+      searchPanel = kind
+      byId('panel-title').textContent = { search: '搜索笔记', recent: '最近打开', favorites: '收藏', settings: '设置', workspace: '切换工作区' }[kind]
+      byId('query').hidden = kind !== 'search'
+      byId('query').value = ''
+      if (kind === 'settings') byId('results').replaceChildren(
+        button(session.dark ? '主题：深色' : '主题：浅色', event => {
+          byId('theme').click()
+          event.currentTarget.textContent = session.dark ? '主题：深色' : '主题：浅色'
+        }),
+        document.createTextNode('自动保存 · 800ms'))
+      else if (kind === 'workspace') byId('results').textContent = '当前为演示工作区。请在桌面应用中打开本地文件夹。'
+      else listPanel()
+      byId('panel').showModal()
+      if (kind === 'search') byId('query').focus()
+    }
+    byId('settings').addEventListener('click', () => openPanel('settings'))
+    byId('workspace-switch').addEventListener('click', () => openPanel('workspace'))
+    byId('query').addEventListener('input', listPanel)
+    for (const element of document.querySelectorAll('[data-panel]')) element.addEventListener('click', () => openPanel(element.dataset.panel))
+    for (const element of document.querySelectorAll('[data-dismiss]')) element.addEventListener('click', () => element.closest('dialog').close())
+    const tools = [
+      ['B', '粗体', '**', '**', '文字'], ['I', '斜体', '*', '*', '文字'], ['S', '删除线', '~~', '~~', '文字'], ['H', '标题', '# '],
+      null, ['☷', '无序列表', '- '], ['1.', '有序列表', '1. '], ['❞', '引用', '> '], ['</>', '行内代码', '`', '`', 'code'],
+      null, ['↗', '链接', '[', '](https://)', '链接'], ['▧', '图片链接', '![', '](./image.png)', '图片描述'],
+      ['▦', '插入表格', '\n| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n']
+    ]
+    for (const tool of tools) {
+      if (!tool) {
+        const separator = document.createElement('span')
+        separator.className = 'tool-separator'
+        byId('format').append(separator)
+        continue
+      }
+      const [label, title, before, after = '', placeholder = ''] = tool
+      const element = button(label, () => {
+        const selection = window.getSelection()
+        if (!selection?.rangeCount || !editor.contains(selection.anchorNode) || !editor.contains(selection.focusNode)) return
+        document.execCommand('insertText', false, before + (selection.toString() || placeholder) + after)
+      })
+      element.title = title
+      element.addEventListener('mousedown', event => event.preventDefault())
+      byId('format').append(element)
+    }
+    for (const [label, title, command] of [['↶', '撤销', 'undo'], ['↷', '重做', 'redo']]) {
+      const element = button(label, () => { editor.focus(); document.execCommand(command) })
+      element.title = title
+      element.addEventListener('mousedown', event => event.preventDefault())
+      byId('format').append(element)
+    }
+    window.addEventListener('keydown', event => {
+      if (!(event.ctrlKey || event.metaKey)) return
+      if (event.key.toLowerCase() === 's' && current()) { event.preventDefault(); save(session.active) }
+      if (event.shiftKey && event.key.toLowerCase() === 'f' && !document.querySelector('dialog[open]')) {
+        event.preventDefault()
+        openPanel('search')
+      }
+    })
+    for (const element of document.querySelectorAll('[data-icon]')) element.prepend(icon(element.dataset.icon))
+    byId('workspace-switch').textContent = workspaceName + ' ⌄'
+    byId('workspace').title = workspaceName
+    byId('workspace').querySelector('.tree-label').textContent = workspaceName
+    for (const path of session.tabs) expandParents(path)
+    applyTheme()
+    render()
+  </script>
+</body>
+</html>
