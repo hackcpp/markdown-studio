@@ -29,13 +29,13 @@ jobs:
         run: npm test
 
       - name: Build Windows installer
-        run: npm run dist:win -- --x64 --publish never
+        run: npm run dist:win -- --x64 --publish never '-c.artifactName=markdown-studio-${version}-windows-${arch}.${ext}'
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v7
         with:
           name: markdown-studio-windows-x64
-          path: release/* Setup *.exe
+          path: release/markdown-studio-*-windows-x64.exe
           if-no-files-found: error
           compression-level: 0
 
@@ -70,7 +70,7 @@ jobs:
       - name: Build macOS disk image
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run dist:mac -- --${{ matrix.arch }} --publish never
+        run: npm run dist:mac -- --${{ matrix.arch }} --publish never '-c.artifactName=markdown-studio-${version}-macos-${arch}.${ext}'
 
       - name: Upload macOS disk image
         uses: actions/upload-artifact@v7
@@ -79,3 +79,34 @@ jobs:
           path: release/*.dmg
           if-no-files-found: error
           compression-level: 0
+
+  publish:
+    name: Attach installers to the release
+    needs: [windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: markdown-studio-*
+          path: installers
+          merge-multiple: true
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          set -eu
+          version="${RELEASE_TAG#v}"
+          files=(
+            "installers/markdown-studio-${version}-windows-x64.exe"
+            "installers/markdown-studio-${version}-macos-arm64.dmg"
+            "installers/markdown-studio-${version}-macos-x64.dmg"
+          )
+          for file in "${files[@]}"; do
+            test -s "$file"
+          done
+          gh release upload --repo "$GITHUB_REPOSITORY" -- "$RELEASE_TAG" "${files[@]}"

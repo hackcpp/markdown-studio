@@ -20,17 +20,15 @@
 
 ## 下载
 
-目前尚未发布正式 Release。可从 [已通过的 Windows 构建](https://github.com/hackcpp/markdown-studio/actions/runs/43571351207) 下载早期 x64 安装包，或按下文从源码运行。
+在 [最新版本](https://github.com/hackcpp/markdown-studio/releases/latest) 的 **Assets** 中按设备选择安装包：
 
-发布 [GitHub Release](https://github.com/hackcpp/markdown-studio/releases) 后，构建产物会出现在对应 [Actions 运行](https://github.com/hackcpp/markdown-studio/actions/workflows/build.yml) 的 **Artifacts** 区域。按设备选择并解压下载的归档：
-
-| 平台 | 构建产物 | 格式 |
+| 平台 | 安装包 | 格式 |
 | --- | --- | --- |
-| Windows x64 | `markdown-studio-windows-x64` | NSIS `.exe` |
-| macOS Apple Silicon | `markdown-studio-macos-arm64` | `.dmg` |
-| macOS Intel | `markdown-studio-macos-x64` | `.dmg` |
+| Windows x64 | `markdown-studio-<版本>-windows-x64.exe` | NSIS `.exe` |
+| macOS Apple Silicon | `markdown-studio-<版本>-macos-arm64.dmg` | `.dmg` |
+| macOS Intel | `markdown-studio-<版本>-macos-x64.dmg` | `.dmg` |
 
-macOS 打包尚待首次 Release 验证，目前未配置 Apple Developer ID 签名或公证。
+macOS 安装包未配置 Apple Developer ID 签名或公证。
 
 ## 快速上手
 
