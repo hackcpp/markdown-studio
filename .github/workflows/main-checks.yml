@@ -27,9 +27,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm ci
 
       - name: Run tests
         run: npm test
+
+      - name: Run Electron smoke test
+        run: npm run test:desktop

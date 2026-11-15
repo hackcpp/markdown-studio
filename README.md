@@ -55,6 +55,7 @@ npm run dev
 | 命令 | 用途 |
 | --- | --- |
 | `npm test` | 运行文件管理、搜索、元数据与恢复测试 |
+| `npm run test:desktop` | 构建界面并运行 Electron 桌面冒烟测试，覆盖草稿恢复、关闭保护和搜索定位 |
 | `npm run build` | 执行 TypeScript 检查并构建前端 |
 | `npm run dist:win` | 在 Windows 上生成 NSIS 安装包 |
 | `npm run dist:mac` | 在 macOS 上按当前架构生成 DMG |
@@ -66,7 +67,7 @@ npm run dev
 
 克隆仓库后，在仓库根目录执行一次 `git config --local core.hooksPath .githooks` 启用 hook。推送时会检查待推送提交中的行尾空白、文件尾多余空行和 Tab 缩进，然后在当前工作区运行 `npm test`。任一步失败，Git 都会停止推送。测试其他分支前，先切换到对应分支。
 
-推送到 `main` 后，[Main checks 工作流](.github/workflows/main-checks.yml) 会在 Windows 上用同一套规则检查提交格式，并运行 `npm test`。
+推送到 `main` 后，[Main checks 工作流](.github/workflows/main-checks.yml) 会在 Windows 上检查提交格式，并运行模块测试和桌面冒烟测试。
 
 ## 产品设计
 

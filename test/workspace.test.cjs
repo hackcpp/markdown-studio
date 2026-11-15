@@ -4,11 +4,10 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { Workspace } = require('../electron/workspace.cjs')
+const { tempDirectory } = require('./helpers/temp-directory.cjs')
 
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'markdown-studio-test-'))
-  t.after(() => fs.rm(root, { recursive: true, force: true }))
-  return Workspace.open(root)
+  return Workspace.open(await tempDirectory(t))
 }
 
 test('扫描多级目录，移动文件夹，不覆盖同名笔记', async t => {
@@ -76,13 +75,42 @@ test('重命名目录更新反向引用，以及被草稿引用时暂停', async
   assert.ok(await ws.read(note))
   await ws.move('资料 夹', '', '新 目录')
   assert.equal((await ws.read(reference)).content, '[笔记][ref]\n\n[ref]: <新 目录/中文.md?x=1#段落> "说明"\n')
-  const before = await ws.read('新 目录/中文.md')
-  if (before.identity) {
-    await fs.rename(path.join(ws.root, '新 目录/中文.md'), path.join(ws.root, '外部移动.md'))
-    assert.equal(await ws.movedNote('新 目录/中文.md', before.identity, before.hash), '外部移动.md')
-    await fs.writeFile(path.join(ws.root, '外部移动.md'), '磁盘已变')
-    assert.equal(await ws.movedNote('新 目录/中文.md', before.identity, before.hash), null)
-  }
+})
+
+test('外部移动仅在文件身份和内容均匹配时识别', async t => {
+  const ws = await fixture(t)
+  const note = await ws.create('', '原路径', false, '# 原稿')
+  const before = await ws.read(note)
+  if (!before.identity) return t.skip('当前文件系统未提供文件标识')
+  await fs.rename(path.join(ws.root, note), path.join(ws.root, '外部移动.md'))
+  assert.equal(await ws.movedNote(note, before.identity, before.hash), '外部移动.md')
+  await fs.writeFile(path.join(ws.root, '外部移动.md'), '磁盘已变')
+  assert.equal(await ws.movedNote(note, before.identity, before.hash), null)
+})
+
+test('改写第二个反向链接时发生冲突会回滚移动和已写链接', async t => {
+  const ws = await fixture(t)
+  const original = '[原稿](原稿.md#正文)\r\n'
+  const first = await ws.create('', '01-引用', false, original)
+  const second = await ws.create('', '02-引用', false, original)
+  const note = await ws.create('', '原稿', false, '# 正文')
+  const external = '外部程序写入的内容\r\n'
+  const realSave = ws.save.bind(ws)
+  let rewroteFirst
+  t.mock.method(ws, 'save', async (file, ...args) => {
+    if (file === second) {
+      rewroteFirst = (await ws.read(first)).content
+      await fs.writeFile(path.join(ws.root, second), external)
+    }
+    return realSave(file, ...args)
+  })
+
+  await assert.rejects(ws.move(note, '', '新名称'), /移动期间受到外部修改：02-引用/)
+  assert.equal(rewroteFirst, '[原稿](新名称.md#正文)\r\n')
+  assert.equal((await ws.read(note)).content, '# 正文')
+  assert.equal(await ws.read('新名称.md'), null)
+  assert.equal((await ws.read(first)).content, original)
+  assert.equal((await ws.read(second)).content, external)
 })
 
 test('目录废纸篓预览包含隐藏项并要求重新确认变化后的清单', async t => {

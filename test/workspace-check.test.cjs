@@ -1,0 +1,22 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const path = require('node:path')
+const { tempDirectory } = require('./helpers/temp-directory.cjs')
+const { Workspace } = require('../electron/workspace.cjs')
+const { checkWorkspace } = require('../electron/workspace-check.cjs')
+
+test('工作区检查报告失效链接、YAML、孤立附件、索引异常和草稿，且不写笔记', async t => {
+  const dir = await tempDirectory(t)
+  const ws = await Workspace.open(dir)
+  await fs.mkdir(path.join(dir, 'Attachments', 'images'), { recursive: true })
+  await fs.writeFile(path.join(dir, 'Attachments', 'images', 'used.png'), 'image')
+  await fs.writeFile(path.join(dir, 'Attachments', 'images', 'unused.png'), 'image')
+  const content = '---\ntitle: [\n---\n\n[笔记](missing.md#anchor)\n\n![图片][pic]\n\n[pic]: Attachments/images/used.png'
+  const file = await ws.create('', '检查', false, content)
+  const issues = await checkWorkspace(ws, { tabs: [{ path: '草稿.md', draft: true }] }, '索引损坏')
+  assert.deepEqual(issues.map(issue => issue.kind).sort(), ['asset', 'draft', 'index', 'link', 'yaml'])
+  assert.equal(issues.find(issue => issue.kind === 'link').detail, 'missing.md')
+  assert.equal(issues.find(issue => issue.kind === 'asset').path, 'Attachments/images/unused.png')
+  assert.equal((await ws.read(file)).content, content)
+})

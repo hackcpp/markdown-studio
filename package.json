@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite build && electron .",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test",
+    "test": "node --test \"test/*.test.cjs\"",
+    "test:desktop": "vite build && node --test e2e/draft-recovery-search.smoke.cjs",
     "dist:mac": "npm run build && electron-builder --mac dmg",
     "dist:win": "npm run build && electron-builder --win nsis",
     "dist:linux": "npm run build && electron-builder --linux tar.gz"
@@ -26,6 +27,7 @@
     "codemirror": "^6.0.2",
     "electron": "^42.0.0",
     "electron-builder": "^26.0.0",
+    "playwright-core": "^1.65.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
