@@ -156,6 +156,9 @@ function createWindow() {
 
 if (!app.requestSingleInstanceLock()) app.quit()
 else app.whenReady().then(() => {
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    app.dock.setIcon(path.join(__dirname, 'markdown-studio.png'))
+  }
   protocol.handle('note-image', async request => {
     try {
       const url = new URL(request.url)
